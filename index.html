@@ -114,7 +114,7 @@
         <defs><clipPath id="sk-clip"></clipPath></defs>
         <g id="sk-rules"></g>
         <g id="sk-body">
-          <g id="sk-pulse" clip-path="url(#sk-clip)">
+          <g clip-path="url(#sk-clip)">
             <rect id="sk-base" x="0" y="0" width="390" height="872"/>
             <rect id="sk-fill" x="16" y="0" width="0" height="872"/>
           </g>
@@ -135,7 +135,7 @@
   <div class="panel-head">
     <div>
       <h1>Скелетон контента · Custody</h1>
-      <p class="sub">Загрузка главной по&nbsp;образцу WW Labs. Заливка проходит плашки слева направо и&nbsp;уходит той&nbsp;же дорогой, как в&nbsp;секциях 1–3 образца. Пульс гасит плашки до&nbsp;40&nbsp;% и&nbsp;возвращает, как в&nbsp;секции&nbsp;4.</p>
+      <p class="sub">Загрузка главной по&nbsp;образцу WW Labs: заливка проходит плашки слева направо и&nbsp;уходит той&nbsp;же дорогой.</p>
     </div>
     <button class="close only-narrow" id="close-panel">Готово</button>
   </div>
@@ -152,9 +152,9 @@
 
 <script>
 (() => {
-  // ── Параметры. mode: «sweep» — заливка (WW, секции 1–3), «pulse» — пульс прозрачности (WW, секция 4).
+  // ── Параметры. Скелетон — заливка образца (WW, секции 1–3): владелец выбрал её из двух, пульс секции 4 снят.
   // curves: «ww» — кривые образца, «pair» — пара владельца (правило 45). Петля и фазы — из дорожек образца.
-  const DEFAULTS = { mode: 'sweep', curves: 'ww', speed: 1, fadeDur: 400 };
+  const DEFAULTS = { curves: 'ww', speed: 1, fadeDur: 400 };
   const P = { ...DEFAULTS };
   const LOOP = 3000;
 
@@ -193,35 +193,25 @@
     return ((ay * u + by) * u + cy) * u;
   };
   const ENTER = bezier(0.72, 0, 0, 1), EXIT = bezier(1, 0, 0.28, 1);   // пара владельца: вперёд и назад
-  const WW_SWEEP = bezier(1, 0, 0, 1), WW_PULSE = bezier(0.42, 0, 0.58, 1);
+  const WW_SWEEP = bezier(1, 0, 0, 1);
   const CURVES = {
-    // WW: заливка и уход — (1, 0, 0, 1) на обоих отрезках обрезки, пульс — ease-in-out на обоих отрезках прозрачности.
-    ww:   { fillIn: WW_SWEEP, fillOut: WW_SWEEP, dim: WW_PULSE, rise: WW_PULSE },
-    // Пара: заливка приходит — вперёд, уходит — назад; плашка гаснет — назад, возвращается — вперёд.
-    pair: { fillIn: ENTER, fillOut: EXIT, dim: EXIT, rise: ENTER },
+    ww:   { fillIn: WW_SWEEP, fillOut: WW_SWEEP },   // WW: (1, 0, 0, 1) на обоих отрезках обрезки
+    pair: { fillIn: ENTER, fillOut: EXIT },          // пара: заливка приходит — вперёд, уходит — назад
   };
   const C = () => CURVES[P.curves];
   const CSS_ENTER = 'cubic-bezier(0.72, 0, 0, 1)', CSS_EXIT = 'cubic-bezier(1, 0, 0.28, 1)';
 
-  // ── Петля 3 с, как у образца. Заливка: конец полосы 0 → 1 за 0–1 с, начало 0 → 1 за 1–2 с, покой до 3 с.
-  // Пульс: 1 → 0.4 за 0–0.7 с, 0.4 → 1 за 0.7–1.4 с, покой до 3 с.
-  const fillRect = $('sk-fill'), pulseG = $('sk-pulse');
+  // ── Петля 3 с, как у образца: конец полосы 0 → 1 за 0–1 с, начало 0 → 1 за 1–2 с, покой до 3 с.
+  const fillRect = $('sk-fill');
   const frameAt = t => {
     const c = C();
-    let s = 0, e = 0, o = 1;
-    if (P.mode === 'sweep') {
-      if (t < 1000) e = c.fillIn(t / 1000);
-      else if (t < 2000) { s = c.fillOut((t - 1000) / 1000); e = 1; }
-    } else {
-      if (t < 700) o = 1 - 0.6 * c.dim(t / 700);
-      else if (t < 1400) o = 0.4 + 0.6 * c.rise((t - 700) / 700);
-    }
-    return { s, e, o };
+    if (t < 1000) return { s: 0, e: c.fillIn(t / 1000) };
+    if (t < 2000) return { s: c.fillOut((t - 1000) / 1000), e: 1 };
+    return { s: 0, e: 0 };
   };
   const draw = f => {
     fillRect.setAttribute('x', (X0 + f.s * L).toFixed(2));
     fillRect.setAttribute('width', Math.max(0, (f.e - f.s) * L).toFixed(2));
-    pulseG.style.opacity = f.o.toFixed(4);
   };
   let raf = 0, t0 = performance.now(), frozen = null;
   const timeNow = now => frozen !== null ? frozen : ((now - t0) * P.speed) % LOOP;
@@ -261,7 +251,6 @@
     ['g-flow', 'fadeDur', 'Смена плашек на данные', 150, 1200, 50, v => v + ' мс'],
   ];
   const segs = [
-    ['g-effect', 'mode', 'Скелетон', [['sweep', 'Заливка'], ['pulse', 'Пульс']]],
     ['g-effect', 'curves', 'Кривые', [['ww', 'Как в WW'], ['pair', 'Пара владельца']]],
     ['g-effect', 'speed', 'Скорость', [[1, '1×'], [0.5, '½'], [0.25, '¼']]],
   ];
@@ -318,11 +307,10 @@
   play();
 
   // Отладка: at(ms) замораживает петлю на моменте — для кадров и проверки по кривой; at(null) отпускает.
-  // То же из адреса: ?t=560 — кадр петли, &mode=pulse, &curves=pair, &data — сразу данные.
+  // То же из адреса: ?t=560 — кадр петли, &curves=pair, &data — сразу данные.
   window.__skeletonRig = { P, X0, L, frameAt, setLoaded, get loaded() { return loaded; },
                            at: ms => { frozen = ms; if (ms !== null) draw(frameAt(ms)); } };
   const q = new URLSearchParams(location.search);
-  if (q.has('mode')) P.mode = q.get('mode');
   if (q.has('curves')) P.curves = q.get('curves');
   if (q.has('t')) window.__skeletonRig.at(+q.get('t'));
   if (q.has('data')) setLoaded(true);
