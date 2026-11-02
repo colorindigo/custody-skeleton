@@ -295,9 +295,9 @@
   const T = ms => ms / P.speed;
   const amountEl = $('amount'), cur = $('cur'), numEl = $('num');
   const charSpan = ch => { const s = document.createElement('span'); s.className = 'ch'; s.textContent = ch; return s; };
-  // Значение суммы: данные — «5,420,439.07», ошибка — пусто: на экране один «$» без черты (владелец, 2 ноя;
-  // Figma 3193:54169: Value = «»).
-  const DATA_VALUE = '5,420,439.07', ERROR_VALUE = '';
+  // Значение суммы — «5,420,439.07». У ошибки суммы нет вовсе: остаётся полоска загрузки (владелец, 3 ноя: «бакс уберём
+  // совсем, когда не прогрузилось, пусть будет линия, как при загрузке»; Figma 3193:54169 — Skeleton shown, как у загрузки).
+  const DATA_VALUE = '5,420,439.07';
   numEl.replaceChildren(...[...DATA_VALUE].map(charSpan));
   // Коробки как в Figma: строка кернится целиком, авто-ширина округляется вверх; браузер кернит Geist на 0.1–0.2 шире.
   const box = w => Math.ceil(w - 0.2);
@@ -365,7 +365,7 @@
     if (t < half) barDraw(0, ENTER(t / half)); else barDraw(EXIT((t - half) / half), 1);
   };
   const barTick = now => { barAt(frozen !== null ? frozen : (now - bar.t0) * P.speed); bar.raf = requestAnimationFrame(barTick); };
-  // Длина полоски — половина коробки числа данных (216 → 108), а не того значения, что стоит сейчас: после одного «$» она та же.
+  // Длина полоски — половина коробки числа данных (216 → 108). У ошибки полоска не уходит и не перезапускается.
   let dataBox = 216;
   const barIn = () => {
     bar.L = dataBox * AM.barLen / 100;
@@ -389,10 +389,10 @@
     setGrain(true);
     if (await wave(leaveState)) { setGrain(false); barIn(); }
   };
-  document.fonts.ready.then(() => { layoutRow(); dataBox = box(measure(DATA_VALUE)); if (mode === 'loading') barIn(); });
+  document.fonts.ready.then(() => { layoutRow(); dataBox = box(measure(DATA_VALUE)); if (mode !== 'data') barIn(); });
 
   // ── Загрузка → исход → загрузка. Исход — данные или ошибка (P.outcome). Исход приходит — фаза «вперёд»: плашки гаснут,
-  // ряды или блок ошибки проявляются на кривой вперёд, сумма — как в риге обновления (данные — число, ошибка — один «$»).
+  // ряды или блок ошибки проявляются на кривой вперёд, сумма — как в риге обновления (данные — число; у ошибки полоска остаётся).
   // Обратно к загрузке — фаза «назад», кривая назад. У ошибки нет списка, поэтому гаснут и линии рядов; у данных линии
   // есть в снимке, и там они стоят всегда.
   const listImg = $('content-list'), skBody = $('sk-body'), skRules = $('sk-rules'), errEl = $('err'), errBtn = $('err-btn');
@@ -425,7 +425,8 @@
     if (fwd) done.then(() => { if (mode !== 'loading') stop(); });
     // Как в риге обновления, переход суммы не обрывается: пока идёт волна, нажатия не принимаются.
     busy = true;
-    (fwd ? amountIn(next === 'error' ? ERROR_VALUE : DATA_VALUE) : amountOut()).then(() => { busy = false; });
+    const amount = res === 'error' ? done : fwd ? amountIn(DATA_VALUE) : amountOut();   // у ошибки сумма не меняется
+    amount.then(() => { busy = false; });
   };
   let busy = false;
   // Нажатие: из загрузки — к выбранному исходу, из исхода — обратно к загрузке. У ошибки это «Try again»: нажатие по кнопке
